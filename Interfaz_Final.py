@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[7]:
-
-
 import streamlit as st
 import pandas as pd
 import joblib
-import numpy as np
-import matplotlib.pyplot as plt
 import difflib
+from PIL import Image
+import plotly.express as px
 
 @st.cache_resource
 def load_models():
@@ -36,40 +33,134 @@ def corregir_nombres_columnas(df, columnas_objetivo):
 def preprocess_dataframe(df):
     """Preprocesa el DataFrame para el modelo"""
     df_processed = df.copy()
-    # Implementar preprocesamiento real aquí (ejemplo: codificación de variables categóricas)
     return df_processed
 
 def main():
-    st.set_page_config(page_title="Modelo BLAA", layout="wide")
-    st.title("Predicción de libros que sean solicitados")
+    st.set_page_config(
+        page_title="Sistema de Predicción BLAA", 
+        page_icon="📚",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # Header con imagen y título mejorado
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        try:
+            image = Image.open('img/banrep.jpeg')
+            st.image(image, width=250, use_container_width=False)
+        except:
+            st.warning("⚠️ Imagen no encontrada: img/banrep.jpeg")
+    
+    # Espaciado adicional después de la imagen
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.title("📚 Sistema de Predicción de Libros Solicitados")
+    st.markdown("---")
+    
+    # CSS personalizado mejorado
+    st.markdown("""
+    <style>
+    .main-header {
+        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .metric-card {
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 5px solid #1f77b4;
+    }
+    .upload-section {
+        background-color: #f8f9fa;
+        padding: 2rem;
+        border-radius: 10px;
+        border: 2px dashed #dee2e6;
+    }
+    .prediction-section {
+        background-color: #e8f5e8;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid #28a745;
+    }
+    /* Estilo para mejorar la imagen del header */
+    [data-testid="stImage"] > img {
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: 3px solid #ffffff;
+        transition: transform 0.3s ease;
+    }
+    [data-testid="stImage"] > img:hover {
+        transform: scale(1.02);
+    }
+    /* Mejoras adicionales para el título */
+    .main > div:first-child h1 {
+        text-align: center;
+        color: #1f77b4;
+        font-weight: 700;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Inicializar session_state para almacenar df_input
     if 'df_input' not in st.session_state:
         st.session_state.df_input = None
 
-    st.info(f"Antes de subir el archivo, asegúrate de que las columnas estén nombradas como: {', '.join(columnas_modelo)}")
+    # Información importante en un contenedor destacado
+    with st.container():
+        st.markdown('<div class="upload-section">', unsafe_allow_html=True)
+        st.info(f"📋 **Columnas requeridas:** {', '.join(columnas_modelo)}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Cargar modelos
     modelos = load_models()
     
-    # Selector de modelo
-    st.header("Selección de Modelo")
-    modelo_seleccionado = st.selectbox(
-        "Selecciona el modelo",
-        options=list(modelos.keys()),
-        help="El modelo de Regresión Logística genera valores probabilísticos entre 0 y 1"
-    )
+    # Sidebar para configuración
+    with st.sidebar:
+        st.header("⚙️ Configuración")
+        st.markdown("---")
+        
+        # Selector de modelo
+        st.subheader("🤖 Modelo de Predicción")
+        modelo_seleccionado = st.selectbox(
+            "Selecciona el modelo",
+            options=list(modelos.keys()),
+            help="El modelo de Regresión Logística genera valores probabilísticos entre 0 y 1"
+        )
+        
+        st.success(f"✅ **{modelo_seleccionado}**")
+        modelo = modelos[modelo_seleccionado]
+        
+        st.markdown("---")
+        st.subheader("📊 Información del Modelo")
+        st.write("• **Tipo:** Regresión Logística")
+        st.write("• **Salida:** Probabilidades (0-1)")
+        st.write("• **Variables:** Categoría, Autor, Editorial")
     
-    st.info(f"📊 Modelo seleccionado: **{modelo_seleccionado}**")
-    modelo = modelos[modelo_seleccionado]
-    
-    # Opciones de entrada
+    # Opciones de entrada con mejor diseño
     st.header("📊 Datos de Entrada")
-    option = st.radio("Selecciona entrada:", ["Subir archivo", "Entrada manual"])
+    st.markdown("---")
     
-    if option == "Subir archivo":
-       
-      uploaded_file = st.file_uploader("Sube tu archivo CSV o Excel", type=['csv', 'xlsx'], key="file_uploader")
+    # Tabs para mejor organización
+    tab1, tab2 = st.tabs(["📁 Subir Archivo", "✏️ Entrada Manual"])
+    
+    uploaded_file = None
+    
+    with tab1:
+        st.markdown('<div class="upload-section">', unsafe_allow_html=True)
+        uploaded_file = st.file_uploader(
+            "📁 Arrastra y suelta tu archivo CSV o Excel aquí", 
+            type=['csv', 'xlsx'], 
+            key="file_uploader",
+            help="Formatos soportados: CSV, Excel (.xlsx)"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if uploaded_file:
         try:
@@ -78,7 +169,7 @@ def main():
             else:
                 st.session_state.df_input = pd.read_excel(uploaded_file)
 
-            # ✅ Mapeo manual de columnas (normalización básica)
+            # Mapeo manual de columnas (normalización básica)
             mapeo_columnas = {
                 'editorial': 'Publisher',
                 'autor': 'Author',
@@ -99,13 +190,13 @@ def main():
                 columns=lambda x: mapeo_columnas.get(x.lower(), x)
             )
 
-            #  Corrección de nombres parecidos (difflib)
+            # Corrección de nombres parecidos (difflib)
             df_input, corregidas = corregir_nombres_columnas(st.session_state.df_input, columnas_modelo)
 
             if corregidas:
                 st.success(f"Se renombraron automáticamente estas columnas: {', '.join(corregidas)}")
 
-            #  Verificar que al menos haya columnas válidas
+            # Verificar que al menos haya columnas válidas
             columnas_presentes = [col for col in columnas_modelo if col in df_input.columns]
             if not columnas_presentes:
                 st.error("⚠️ El archivo no contiene ninguna de las columnas requeridas para el modelo.")
@@ -116,120 +207,180 @@ def main():
         except Exception as e:
             st.error(f"Error al procesar el archivo: {str(e)}")
 
-    elif option == "Entrada manual":
-        num_filas = st.number_input("¿Cuántas filas deseas ingresar?", min_value=1, max_value=50, value=1, step=1, key="num_filas")
+    with tab2:
+        st.markdown('<div class="upload-section">', unsafe_allow_html=True)
+        num_filas = st.number_input(
+            "¿Cuántas filas deseas ingresar?", 
+            min_value=1, max_value=50, value=1, step=1, 
+            key="num_filas",
+            help="Máximo 50 filas por sesión"
+        )
         data_manual = {'Categoria': [], 'Author': [], 'Publisher': []}
         
         # Usar un formulario para mantener la consistencia de los datos
         with st.form(key="manual_input_form"):
             for i in range(int(num_filas)):
-                st.markdown(f"### Fila {i+1}")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    categoria = st.text_input(f"Categoría {i+1}", key=f"cat_{i}")
-                with col2:
-                    author = st.text_input(f"Autor {i+1}", key=f"auth_{i}")
-                with col3:
-                    publisher = st.text_input(f"Editorial {i+1}", key=f"pub_{i}")
-                data_manual['Categoria'].append(categoria)
-                data_manual['Author'].append(author)
-                data_manual['Publisher'].append(publisher)
+                with st.expander(f"📖 Libro {i+1}", expanded=True):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        categoria = st.text_input(f"Categoría", key=f"cat_{i}", placeholder="Ej: Ficción")
+                    with col2:
+                        author = st.text_input(f"Autor", key=f"auth_{i}", placeholder="Ej: Gabriel García Márquez")
+                    with col3:
+                        publisher = st.text_input(f"Editorial", key=f"pub_{i}", placeholder="Ej: Planeta")
+                    data_manual['Categoria'].append(categoria)
+                    data_manual['Author'].append(author)
+                    data_manual['Publisher'].append(publisher)
             
-            submit_button = st.form_submit_button("Crear DataFrame")
+            submit_button = st.form_submit_button("🔄 Crear DataFrame", type="primary")
             
             if submit_button:
                 # Validar que todas las entradas estén completas
                 if all(len(data_manual[col]) == int(num_filas) and all(val.strip() for val in data_manual[col]) 
                        for col in data_manual):
                     st.session_state.df_input = pd.DataFrame(data_manual)
-                    st.success("DataFrame creado correctamente")
+                    st.success("✅ DataFrame creado correctamente")
                 else:
                     st.warning("⚠️ Asegúrate de llenar todas las filas completamente.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Procesamiento y predicción
+    # Procesamiento y predicción con mejor diseño
     if st.session_state.df_input is not None:
-        st.header("Datos a Evaluar")
+        st.markdown("---")
+        st.header("📋 Datos a Evaluar")
+        
         try:
             df_processed = preprocess_dataframe(st.session_state.df_input)
-            st.dataframe(df_processed)
             
-            if st.button("Realizar Predicción", type="primary", key="predict_button"):
-                with st.spinner('Procesando...'):
+            # Mostrar datos en un contenedor estilizado
+            with st.container():
+                st.subheader(f"📊 Vista previa ({len(df_processed)} registros)")
+                st.dataframe(df_processed, use_container_width=True)
+            
+            # Botón de predicción centrado y destacado
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                predict_button = st.button(
+                    "🚀 Realizar Predicción", 
+                    type="primary", 
+                    key="predict_button",
+                    use_container_width=True
+                )
+            
+            if predict_button:
+                with st.spinner('🔄 Procesando predicciones...'):
                     probabilidades = modelo.predict_proba(df_processed)[:, 1]
                     probabilidades_formateadas = [round(prob, 5) for prob in probabilidades]
                     
                     result_df = df_processed.copy()
                     result_df['Probabilidad'] = probabilidades_formateadas
                     
+                    # Resultados en contenedor estilizado
+                    st.markdown("---")
+                    st.markdown('<div class="prediction-section">', unsafe_allow_html=True)
                     st.header(f"🎯 Resultados - {modelo_seleccionado}")
-                    st.dataframe(result_df)
                     
+                    # Tabla de resultados con colores
+                    st.subheader("📋 Predicciones Detalladas")
+                    st.dataframe(
+                        result_df.style.background_gradient(subset=['Probabilidad'], cmap='RdYlGn'),
+                        use_container_width=True
+                    )
+                    
+                    # Gráfico interactivo con Plotly
                     st.subheader("📈 Distribución de Probabilidades")
-                    fig, ax = plt.subplots(figsize=(9, 6))
-                    ax.hist(probabilidades, bins=20, alpha=0.8, color='teal', edgecolor='black')
-                    ax.set_xlabel('Probabilidad')
-                    ax.set_ylabel('Frecuencia')
-                    ax.set_title(f'Distribución de Probabilidades - {modelo_seleccionado}')
-                    ax.grid(True, alpha=0.3)
-                    st.pyplot(fig)
+                    fig = px.histogram(
+                        x=probabilidades, 
+                        nbins=20,
+                        title=f'Distribución de Probabilidades - {modelo_seleccionado}',
+                        labels={'x': 'Probabilidad', 'y': 'Frecuencia'},
+                        color_discrete_sequence=['#1f77b4']
+                    )
+                    fig.update_layout(
+                        showlegend=False,
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)'
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
                     
+                    # Métricas mejoradas
                     st.subheader("📊 Estadísticas del Modelo")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric(
+                            "Probabilidad Promedio", 
+                            f"{probabilidades.mean():.5f}",
+                            help="Valor promedio de todas las predicciones"
+                        )
+                    with col2:
+                        st.metric(
+                            "Probabilidad Máxima", 
+                            f"{probabilidades.max():.5f}",
+                            help="Mayor probabilidad predicha"
+                        )
+                    with col3:
+                        st.metric(
+                            "Probabilidad Mínima", 
+                            f"{probabilidades.min():.5f}",
+                            help="Menor probabilidad predicha"
+                        )
+                    with col4:
+                        st.metric(
+                            "Total Registros", 
+                            f"{len(result_df)}",
+                            help="Número total de predicciones realizadas"
+                        )
+                    
+                    # Análisis adicional
+                    alta_probabilidad = (probabilidades > 0.7).sum()
+                    media_probabilidad = ((probabilidades >= 0.3) & (probabilidades <= 0.7)).sum()
+                    baja_probabilidad = (probabilidades < 0.3).sum()
+                    
+                    st.subheader("🎯 Análisis de Resultados")
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        st.metric("Probabilidad Promedio", f"{probabilidades.mean():.5f}")
+                        st.metric("Alta Demanda (>70%)", alta_probabilidad, help="Libros con alta probabilidad de ser solicitados")
                     with col2:
-                        st.metric("Probabilidad Máxima", f"{probabilidades.max():.5f}")
+                        st.metric("Demanda Media (30-70%)", media_probabilidad, help="Libros con probabilidad moderada")
                     with col3:
-                        st.metric("Probabilidad Mínima", f"{probabilidades.min():.5f}")
+                        st.metric("Baja Demanda (<30%)", baja_probabilidad, help="Libros con baja probabilidad")
                     
+                    # Botón de descarga mejorado
                     csv = result_df.to_csv(index=False)
                     st.download_button(
                         "📥 Descargar Resultados CSV",
                         csv,
                         f"predicciones_{modelo_seleccionado.lower().replace(' ', '_')}.csv",
-                        key="download_button"
+                        key="download_button",
+                        help="Descargar todas las predicciones en formato CSV"
                     )
+                    st.markdown('</div>', unsafe_allow_html=True)
         except Exception as e:
-            st.error(f"Error al procesar los datos: {str(e)}")
+            st.error(f"❌ Error al procesar los datos: {str(e)}")
     else:
-        st.info("Por favor, crea o sube un DataFrame válido para realizar la predicción.")
+        # Mensaje de bienvenida cuando no hay datos
+        st.markdown("---")
+        with st.container():
+            st.info("👆 Por favor, carga tus datos usando una de las opciones de arriba para comenzar con las predicciones.")
+            
+            # Información adicional
+            with st.expander("ℹ️ Información sobre el sistema"):
+                st.markdown("""
+                **¿Qué hace este sistema?**
+                - Predice la probabilidad de que un libro sea solicitado
+                - Utiliza algoritmos de Machine Learning entrenados con datos históricos
+                - Analiza categoría, autor y editorial para hacer predicciones
+                
+                **¿Cómo usar el sistema?**
+                1. Sube un archivo CSV/Excel o ingresa datos manualmente
+                2. Verifica que los datos tengan las columnas correctas
+                3. Haz clic en "Realizar Predicción"
+                4. Revisa los resultados y descarga el archivo con las predicciones
+                
+                **Formatos de archivo soportados:**
+                - CSV (separado por comas)
+                - Excel (.xlsx)
+                """)
 
 if __name__ == "__main__":
     main()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
