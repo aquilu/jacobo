@@ -30,8 +30,14 @@ source venv/bin/activate
 ```
 
 ### 2. Instalar dependencias
+
+**Opción A: Desde requirements.txt (recomendado)**
 ```bash
-# Instalar todas las dependencias necesarias
+pip install -r requirements.txt
+```
+
+**Opción B: Instalación manual**
+```bash
 pip install streamlit plotly pillow scikit-learn pandas joblib openpyxl
 ```
 
