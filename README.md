@@ -9,7 +9,6 @@ Banco de la República
 Email: jacobo_1501@hotmail.com
 
 ## 🏛️ Contacto Institucional
-**halbarba@banrep.gov.co**  
 Banco de la República
 
 ## 📋 Descripción
